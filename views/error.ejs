@@ -26,29 +26,10 @@
                     <li class="nav-item mx-2">
                         <a class="nav-link active" aria-current="page" href="/">Home</a>
                     </li>
-                    <% if (isAdmin) { %>
-                    <li class="nav-item mx-2">
-                        <a class="nav-link" href="/admin">Admin</a>
-                    </li>
-                    <% } %>
-                    <% if (LoggedIn) { %>
-                    <li class="nav-item mx-2">
-                        <a class="nav-link" href="/post/create">Create</a>
-                    </li>
-                    <li class="nav-item mx-2">
-                        <a class="nav-link" href="/country">Country</a>
-                    </li>
-                    <% } %>
                 </ul>
                 
                 <div class="d-flex flex-column flex-lg-row align-items-center gap-3">
-                    <% if (LoggedIn) { %>
-                    <a href="/auth/login" class="text-white">Profile</a>
-                    <a href="/auth/logout" class="text-white text-decoration-none px-3 py-1 rounded-4" style="background-color: #f94ca4;">Log out</a>
-                    <% } else { %>
-                    <a href="/auth/login" class="text-white">Login</a>
-                    <a href="/auth/register" class="text-white text-decoration-none px-3 py-1 rounded-4" style="background-color: #f94ca4;">Sign Up</a>
-                    <% } %>
+                    
                 </div>
             </div>
             </div>
