@@ -38,6 +38,9 @@
                     <li class="nav-item mx-2">
                         <a class="nav-link" href="/country">Country</a>
                     </li>
+                    <li class="nav-item mx-2">
+                      <a class="nav-link" href="/gpt">GPT</a>
+                  </li>
                     <% } %>
                 </ul>
                 
@@ -54,7 +57,8 @@
             </div>
         </div>
     </nav>
-    <div class="container mt-5 text-white">
+    <div class="form-container text-white">
+      <div class="wrapper">
         <h1>Update User</h1>
         <form
           id="updateUserForm"
@@ -83,8 +87,23 @@
               required
             />
           </div>
+          <div class="form-group">
+            <label for="password">password</label>
+            <input
+              type="text"
+              class="form-control"
+              id="password"
+              name="password"
+              required
+            />
+          </div>
+          <select class="form-select" id="role" name="role">
+            <option value="admin">admin</option>
+            <option value="user">user</option>
+        </select>
           <button type="submit" class="btn btn-primary">Update User</button>
         </form>
+      </div>
       </div>
 </body>
 </html>

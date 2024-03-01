@@ -37,6 +37,40 @@ router.get('/country', isAuthenticated, async (req, res) => {
     res.render('country', {LoggedIn, isAdmin, countryGuess: result.data});
 });
 
+router.get("/gpt", isAuthenticated, async (req, res) => {
+    try {
+        const isAdmin = req.session.isAdmin;
+        const LoggedIn = req.session.user ? true : false;
+        res.render("gpt", { LoggedIn, isAdmin });
+    } catch (error) {
+        console.error(error);
+        res.status(500).render("error", { errorCode: 500, error: "Internal Server Error" });
+    }
+});
 
+router.post("/gpt", isAuthenticated, async (req, res) => {
+    try {
+        const isAdmin = req.session.isAdmin;
+        const LoggedIn = req.session.user ? true : false;
+        const options = {
+            method: 'POST',
+            url: 'https://chatgpt-gpt4-ai-chatbot.p.rapidapi.com/ask',
+            headers: {
+              'content-type': 'application/json',
+              'X-RapidAPI-Key': '8f5ef08c9emshcfd8325fe186caap10eafcjsn0469ecef7688',
+              'X-RapidAPI-Host': 'chatgpt-gpt4-ai-chatbot.p.rapidapi.com'
+            },
+            data: {
+              query: req.body.query
+            }
+        };
+        const response = await axios.request(options);
+        const result = response.data.response;
+        res.render("gptResult", { result, LoggedIn, isAdmin });
+    } catch (error) {
+        console.error(error);
+        res.status(500).render("error", { errorCode: 500, error: "Internal Server Error" });
+    }
+})
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const Post = require('../models/post');
 
@@ -45,7 +46,7 @@ router.get('/update/:id', async (req, res) => {
 
 router.post('/update/:id', async (req, res) => {
     try {
-        const {username, email} = req.body;
+        const {username, email, password, role} = req.body;
         const user = await User.findById(req.params.id);
 
         if (!user) {
@@ -54,6 +55,9 @@ router.post('/update/:id', async (req, res) => {
 
         user.username = username;
         user.email = email;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.password = hashedPassword;
+        user.role = role;
         await user.save();
         res.redirect('/admin');
     } catch (error) {
