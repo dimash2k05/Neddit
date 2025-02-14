@@ -1,101 +1,173 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const Post = require('../models/post');
-const User = require('../models/user');
-const loginRequired = require('../middlewares/auth');
+const Comment = require('../models/comment')
+const moment = require('moment');
+const mongoose = require("mongoose");
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'public/uploads/');
-    },
-    filename: function(req, file, cb) {
-        cb(null, file.originalname);
-    }
-});
 
-const upload = multer({storage: storage});
-
-router.use(loginRequired);
-
-router.get('/create', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
-        const isAdmin = req.session.isAdmin;
-        const LoggedIn = (req.session.user) ? true : false;
-        const users = await User.find(); 
-        res.render('createPost', {users, isAdmin, LoggedIn}); 
+        const posts = await Post.find().populate('author', 'username');
+        res.json({ success: true, posts });
     } catch (error) {
-        res.status(500).render('error', {errorCode: 500, error: 'Internal Server Error'});
+        console.error("Error fetching posts:", error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
-router.post('/create', upload.fields([{name: 'image1'}, {name: 'image2'}, {name: 'image3'}]), async (req, res) => {
+router.post('/create', async (req, res) => {
     try {
-        const {title_en, title_ru, content_en, content_ru} = req.body;
-        const author = req.session.user;
-
-        const imageUrl1 = req.files['image1'][0].path.substring(7);
-        const imageUrl2 = req.files['image2'][0].path.substring(7);
-        const imageUrl3 = req.files['image3'][0].path.substring(7);
-        
-        const newPost = new Post({
-            title: {en: title_en, ru: title_ru}, 
-            content: {en: content_en, ru: content_ru},
-            author,
-            imageUrl1,
-            imageUrl2,
-            imageUrl3
-        });
+        console.log("Request Body:", req.body);
+        const { title, content, images, author } = req.body;
+        if (!author) {
+            return res.status(400).json({ success: false, error: "Author is required" });
+        }
+        if (!title || !content) {
+            return res.status(400).json({ success: false, error: "Title and content are required" });
+        }
+        const imagePaths = Array.isArray(images) ? images : [];
+        const newPost = new Post({ title, content, author, images: imagePaths });
         await newPost.save();
-        res.redirect(`/post/${newPost._id}`);
+        res.status(201).json({ success: true, message: "Post created successfully", post: newPost });
     } catch (error) {
-        res.status(500).render('error', { errorCode: 500, error: 'Internal Server Error' });
+        console.error("Error creating post:", error);
+        res.status(500).json({ success: false, error: "Internal Server Error" });
     }
 });
 
 router.get('/:postId', async (req, res) => {
     try {
-        const isAdmin = req.session.isAdmin;
-        const LoggedIn = (req.session.user) ? true : false;
-        const postId = req.params.postId;
-        const post = await Post.findById(postId);
+        const post = await Post.findById(req.params.postId).populate('author', 'username');
         if (!post) {
-            return res.status(404).render('error', {errorCode: 404, error: 'Post not found'});
+            return res.status(404).json({ success: false, error: 'Post not found' });
         }
-        console.log(post);
-        const author = await User.findById(post.author);
-        res.render('viewPost', {post, author, isAdmin, LoggedIn});
+        res.json({ success: true, post });
     } catch (error) {
-        res.status(500).render('error', {errorCode: 500, error: 'Internal Server Error'});
+        console.error("Error fetching post:", error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
-router.post('/update/:postId', async (req, res) => {
+router.put('/update/:postId', async (req, res) => {
     try {
+        const { title, content, images } = req.body;
         const postId = req.params.postId;
-        const {title_en, title_ru, content_en, content_ru} = req.body;
-        const title = {en: title_en, ru: content_ru};
-        const content = {en: content_en, ru: content_ru};
-        const updatedPost = await Post.findByIdAndUpdate(postId, {title, content}, { new: true });
+
+        const updatedPost = await Post.findByIdAndUpdate(
+            postId,
+            { title, content, images: Array.isArray(images) ? images : [] },
+            { new: true }
+        );
+
         if (!updatedPost) {
-            return res.status(404).render('error', { errorCode: 404, error: 'Post not found' });
+            return res.status(404).json({ success: false, error: 'Post not found' });
         }
-        res.redirect(`/post/${updatedPost._id}`);
+
+        res.json({ success: true, message: 'Post updated successfully', post: updatedPost });
     } catch (error) {
-        res.status(500).render('error', { errorCode: 500, error: 'Internal Server Error' });
+        console.error("Error updating post:", error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
-router.post('/delete/:postId', async (req, res) => {
+router.delete('/delete/:postId', async (req, res) => {
     try {
         const postId = req.params.postId;
         const deletedPost = await Post.findByIdAndDelete(postId);
+
         if (!deletedPost) {
-            return res.status(404).render('error', { errorCode: 404, error: 'Post not found' });
+            return res.status(404).json({ success: false, error: 'Post not found' });
         }
-        res.redirect('/');
+
+        res.json({ success: true, message: 'Post deleted successfully' });
     } catch (error) {
-        res.status(500).render('error', { errorCode: 500, error: 'Internal Server Error' });
+        console.error("Error deleting post:", error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+router.get('/user/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const userPosts = await Post.find({ author: userId }).populate('author', 'username');
+        res.json({ success: true, posts: userPosts });
+    } catch (error) {
+        console.error("Error fetching user posts:", error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+router.post("/:postId/comments", async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { text, userId } = req.body;
+
+        console.log("Incoming request body:", req.body); // Debugging
+
+        // Validate postId format
+        if (!mongoose.Types.ObjectId.isValid(postId)) {
+            return res.status(400).json({ success: false, error: "Invalid postId format" });
+        }
+
+        // Validate required fields
+        if (!text || !userId) {
+            return res.status(400).json({ success: false, error: "Text and userId are required" });
+        }
+
+        // Ensure the post exists
+        const postExists = await Post.findById(postId);
+        if (!postExists) {
+            return res.status(404).json({ success: false, error: "Post not found" });
+        }
+
+        // Create new comment
+        const newComment = new Comment({
+            post: postId,
+            user: userId,
+            text,
+        });
+
+        await newComment.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Comment added successfully",
+            comment: {
+                _id: newComment._id,
+                text: newComment.text,
+                user: newComment.user,
+                createdAt: newComment.createdAt,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error creating comment:", error);
+        res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
+});
+
+router.get("/:postId/comments", async (req, res) => {
+    try {
+        const { postId } = req.params;
+
+        const comments = await Comment.find({ post: postId })
+            .populate("user", "username") 
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            comments: comments.map(comment => ({
+                _id: comment._id,
+                text: comment.text,
+                author: comment.user?.username || "Unknown",
+                createdAt: comment.createdAt,
+            })),
+        });
+
+    } catch (error) {
+        console.error("Error fetching comments:", error);
+        res.status(500).json({ success: false, error: "Internal Server Error" });
     }
 });
 

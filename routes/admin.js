@@ -6,64 +6,68 @@ const Post = require('../models/post');
 
 router.get('/', async (req, res) => {
     try {
-        const isAdmin = req.session.isAdmin;
-        const LoggedIn = (req.session.user) ? true : false;
         const users = await User.find();
-        res.render('adminPage', {users, isAdmin, LoggedIn});
+        res.json({ success: true, users });
     } catch (error) {
         console.error(error);
-        res.status(500).render('error', {errorCode: 500, error: 'Internal Server Error'});
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
-router.post('/delete/:id', async (req, res) => {
+router.delete('/delete/:id', async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) {
-            return res.status(404).render('error', { errorCode: 404, error: 'User not found' });
+            return res.status(404).json({ success: false, error: 'User not found' });
         }
-        await Post.deleteMany({author: user});
+
+        await Post.deleteMany({ author: user._id });
         await user.deleteOne();
-        res.redirect('/admin');
+
+        res.json({ success: true, message: 'User deleted' });
     } catch (error) {
         console.error(error);
-        res.status(500).render('error', {errorCode: 500, error: 'Internal Server Error'});
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
 router.get('/update/:id', async (req, res) => {
     try {
-        const isAdmin = req.session.isAdmin;
-        const LoggedIn = (req.session.user) ? true : false;
         const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
 
-        res.render('userUpdate', {user, isAdmin, LoggedIn});
+        res.json({ success: true, user });
     } catch (error) {
         console.error(error);
-        res.status(500).render('error', {errorCode: 500, error: 'Internal Server Error'});
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
-})
+});
 
-router.post('/update/:id', async (req, res) => {
+router.put('/update/:id', async (req, res) => {
     try {
-        const {username, email, password, role} = req.body;
+        const { username, email, password, role } = req.body;
         const user = await User.findById(req.params.id);
 
         if (!user) {
-            return res.status(404).render('error', { errorCode: 404, error: 'User not found' });
+            return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        user.username = username;
-        user.email = email;
-        const hashedPassword = await bcrypt.hash(password, 10);
-        user.password = hashedPassword;
-        user.role = role;
+        user.username = username || user.username;
+        user.email = email || user.email;
+        user.role = role || user.role;
+
+        if (password) {
+            user.password = await bcrypt.hash(password, 10);
+        }
+
         await user.save();
-        res.redirect('/admin');
+        res.json({ success: true, message: 'User updated successfully', user });
     } catch (error) {
         console.error(error);
-        res.status(500).render('error', {errorCode: 500, error: 'Internal Server Error'});
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
-})
+});
 
 module.exports = router;
